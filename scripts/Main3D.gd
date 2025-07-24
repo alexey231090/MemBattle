@@ -41,14 +41,6 @@ func create_test_cards():
 		var bench_pos = game_field.get_bench_cells()[i]
 		card.global_position = bench_pos
 		game_field.place_card(card, bench_pos)
-	
-	# Создаем тестового врага на поле
-	var enemy_card = enemy_card_scene.instantiate()
-	add_child(enemy_card)
-	# Помещаем врага в центр противоположной стороны поля
-	var enemy_pos = game_field.board_cells[1][4]  # Примерно середина дальней части поля
-	enemy_card.global_position = enemy_pos
-	game_field.place_card(enemy_card, enemy_pos)
 
 func _on_battle_button_pressed():
 	start_battle()
@@ -107,7 +99,6 @@ func start_battle():
 			var dz = abs(enemy.row - ally.row)
 			
 			# Используем максимум из расстояний как общее расстояние
-			# Это позволяет учитывать и прямые, и диагональные направления
 			var distance = max(dx, dz)
 			
 			if distance < min_distance:
@@ -120,15 +111,131 @@ func start_battle():
 			
 			# Если расстояние больше 1, нужно двигаться к противнику
 			if min_distance > 1:
-				# TODO: Здесь будет логика перемещения
-				print("Нужно переместиться ближе к противнику")
-				# Пока просто начинаем бой
-				ally.card.start_combat(closest_enemy.card, ally.pos)
-				closest_enemy.card.start_combat(ally.card, closest_enemy.pos)
+				var path = find_path_to_enemy(ally, closest_enemy, all_cards)
+				if path.size() > 0:
+					print("Найден путь к противнику, длина: ", path.size())
+					ally.card.combat_target = closest_enemy.card
+					ally.card.move_along_path(path)
+				else:
+					print("Путь к противнику не найден")
 			else:
 				# Если противник рядом (включая диагональ), сразу начинаем бой
 				ally.card.start_combat(closest_enemy.card, ally.pos)
 				closest_enemy.card.start_combat(ally.card, closest_enemy.pos)
+
+func get_lowest_f_score(open_set: Array, f_score: Dictionary) -> Vector2:
+	var lowest = open_set[0]
+	for point in open_set:
+		if f_score[point] < f_score[lowest]:
+			lowest = point
+	return lowest
+
+func optimize_path(path: Array, occupied: Dictionary) -> Array:
+	if path.size() < 3:
+		return path
+		
+	var optimized = []
+	var i = 0
+	optimized.append(path[0])
+	
+	while i < path.size() - 1:
+		var current = path[i]
+		
+		# Ищем самую дальнюю точку, до которой можно дойти по диагонали
+		var max_look_ahead = min(path.size() - i - 1, 3) # Смотрим максимум на 3 шага вперед
+		var best_diagonal = -1
+		
+		for j in range(1, max_look_ahead + 1):
+			var target = path[i + j]
+			var dx = target.x - current.x
+			var dy = target.y - current.y
+			
+			# Проверяем, можно ли дойти по диагонали
+			if abs(dx) == abs(dy) and can_move_diagonal(current, target, occupied):
+				best_diagonal = i + j
+		
+		if best_diagonal != -1:
+			# Если нашли диагональный путь, добавляем конечную точку
+			optimized.append(path[best_diagonal])
+			i = best_diagonal
+		else:
+			# Иначе добавляем следующую точку из оригинального пути
+			optimized.append(path[i + 1])
+			i += 1
+	
+	return optimized
+
+func can_move_diagonal(start: Vector2, end: Vector2, occupied: Dictionary) -> bool:
+	# Проверяем, не заблокирован ли диагональный путь
+	var dx = sign(end.x - start.x)
+	var dy = sign(end.y - start.y)
+	var current = start
+	
+	while current != end:
+		current = Vector2(current.x + dx, current.y + dy)
+		if occupied.has(current) and current != end:
+			return false
+	
+	return true
+
+func astar_pathfinding(start: Vector2, end: Vector2, occupied: Dictionary) -> Array:
+	var open_set = [start]
+	var came_from = {}
+	
+	var g_score = {}
+	g_score[start] = 0
+	
+	var f_score = {}
+	f_score[start] = heuristic(start, end)
+	
+	while open_set.size() > 0:
+		var current = get_lowest_f_score(open_set, f_score)
+		if current == end:
+			var path = reconstruct_path(came_from, current)
+			return optimize_path(path, occupied)
+		
+		open_set.erase(current)
+		
+		# Проверяем соседние клетки (только по горизонтали и вертикали)
+		var neighbors = [
+			Vector2(current.x + 1, current.y), # вправо
+			Vector2(current.x - 1, current.y), # влево
+			Vector2(current.x, current.y + 1), # вниз
+			Vector2(current.x, current.y - 1)  # вверх
+		]
+		
+		for neighbor in neighbors:
+			# Проверяем границы поля
+			if neighbor.x < 0 or neighbor.x >= game_field.GRID_SIZE.x or \
+			   neighbor.y < 0 or neighbor.y >= game_field.GRID_SIZE.y:
+				continue
+			
+			# Проверяем, не занята ли клетка
+			if occupied.has(neighbor) and neighbor != end:
+				continue
+			
+			var tentative_g_score = g_score[current] + 1
+			
+			if !g_score.has(neighbor) or tentative_g_score < g_score[neighbor]:
+				came_from[neighbor] = current
+				g_score[neighbor] = tentative_g_score
+				f_score[neighbor] = g_score[neighbor] + heuristic(neighbor, end)
+				
+				if !open_set.has(neighbor):
+					open_set.append(neighbor)
+	
+	return []
+
+func heuristic(pos: Vector2, end: Vector2) -> float:
+	# Используем манхэттенское расстояние
+	return abs(end.x - pos.x) + abs(end.y - pos.y)
+
+func reconstruct_path(came_from: Dictionary, current: Vector2) -> Array:
+	var path = [current]
+	while came_from.has(current):
+		current = came_from[current]
+		path.push_front(current)
+	return path
 
 func check_battle_in_rows(all_cards: Array):
 	# Группируем карты по строкам (для боя по оси X)
@@ -352,3 +459,65 @@ func raycast_from_mouse() -> Dictionary:
 	
 	print("Столкновений не найдено")
 	return {} 
+
+func find_path_to_enemy(ally, enemy, all_cards: Array) -> Array:
+	var start_pos = Vector2(ally.row, ally.col)
+	var end_pos = Vector2(enemy.row, enemy.col)
+	var final_path = []
+	
+	print("Ищем путь от ", start_pos, " к ", end_pos)
+	
+	# Создаем карту занятых позиций
+	var occupied_positions = {}
+	for card in all_cards:
+		if is_instance_valid(card.card) and card.card != ally.card and card.card != enemy.card:
+			occupied_positions[Vector2(card.row, card.col)] = true
+	
+	# Сначала пробуем прямой путь
+	if start_pos.x == end_pos.x or start_pos.y == end_pos.y:
+		var direct_path = try_direct_path(start_pos, end_pos, occupied_positions)
+		if direct_path.size() > 0:
+			for point in direct_path:
+				final_path.append(game_field.board_cells[point.x][point.y])
+			return final_path
+	
+	# Если прямой путь невозможен, используем A* с оптимизацией диагоналей
+	var path = astar_pathfinding(start_pos, end_pos, occupied_positions)
+	
+	# Убираем последнюю точку (позицию врага)
+	if path.size() > 1:
+		path.pop_back()
+	
+	# Преобразуем путь в мировые координаты
+	for point in path:
+		if point.x >= 0 and point.x < game_field.GRID_SIZE.x and \
+		   point.y >= 0 and point.y < game_field.GRID_SIZE.y:
+			final_path.append(game_field.board_cells[point.x][point.y])
+	
+	return final_path
+
+func try_direct_path(start: Vector2, end: Vector2, occupied: Dictionary) -> Array:
+	var path = []
+	var current = start
+	
+	# Определяем направление движения
+	var dx = 0
+	var dy = 0
+	if start.x == end.x:  # Движение по вертикали
+		dy = sign(end.y - start.y)
+	else:  # Движение по горизонтали
+		dx = sign(end.x - start.x)
+	
+	# Строим путь
+	while current != end:
+		var next = Vector2(current.x + dx, current.y + dy)
+		if occupied.has(next):
+			return []  # Путь заблокирован
+		path.append(next)
+		current = next
+	
+	# Убираем последнюю точку (позицию врага)
+	if path.size() > 0:
+		path.pop_back()
+	
+	return path 

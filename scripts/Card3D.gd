@@ -7,7 +7,7 @@ var is_fighting: bool = false
 var attack_damage: float = 5.0
 var attack_cooldown: float = 1.0  # Время между атаками
 var current_cooldown: float = 0.0
-var combat_offset: float = 0.7  # Насколько близко подходят карты друг к другу
+var combat_offset: float = 1.0  # Увеличиваем расстояние между картами в бою
 
 var max_health: float = 100.0
 var current_health: float = 100.0
@@ -17,6 +17,11 @@ var health_sprite: Sprite3D
 
 var original_cell_position: Vector3  # Позиция центра ячейки
 var combat_target: Node  # Цель для атаки
+
+# Система перемещения
+var movement_path: Array = []  # Путь как массив позиций
+var is_moving_along_path: bool = false
+var current_path_index: int = 0
 
 func _ready():
 	# Устанавливаем слой коллизии для карты
@@ -80,11 +85,9 @@ func start_combat(target: Node, cell_pos: Vector3):
 	is_fighting = true
 	current_cooldown = 0.0  # Сбрасываем таймер атаки
 	
-	# Вычисляем позицию для боя (смещение к противнику)
-	var direction = (combat_target.global_position - global_position).normalized()
-	var combat_position = original_cell_position + direction * combat_offset
-	print(name + ": Двигаюсь к позиции: " + str(combat_position))
-	move_to(combat_position)
+	# Если цель еще не в бою, инициируем бой с её стороны
+	if combat_target and not combat_target.is_fighting:
+		combat_target.start_combat(self, combat_target.global_position)
 
 func stop_combat():
 	print(name + ": Прекращаю бой")
@@ -102,6 +105,25 @@ func die():
 	print(name + ": Погибаю!")
 	queue_free()
 
+func move_along_path(path: Array):
+	if path.size() > 0:
+		movement_path = path
+		current_path_index = 0
+		is_moving_along_path = true
+		# Начинаем движение к первой точке
+		move_to_next_path_point()
+
+func move_to_next_path_point():
+	if current_path_index < movement_path.size():
+		var next_pos = movement_path[current_path_index]
+		move_to(next_pos)
+	else:
+		is_moving_along_path = false
+		movement_path.clear()
+		# Если есть цель для боя, начинаем бой с текущей позиции
+		if combat_target and is_instance_valid(combat_target):
+			start_combat(combat_target, global_position)
+
 func _physics_process(delta):
 	if is_moving:
 		var direction = (target_position - global_position)
@@ -112,8 +134,13 @@ func _physics_process(delta):
 			is_moving = false
 			global_position = target_position
 			velocity = Vector3.ZERO
+			
+			# Если движемся по пути, переходим к следующей точке
+			if is_moving_along_path:
+				current_path_index += 1
+				move_to_next_path_point()
 	
-	if is_fighting and combat_target and combat_target.current_health > 0:
+	if is_fighting and combat_target and is_instance_valid(combat_target) and combat_target.current_health > 0:
 		current_cooldown -= delta
 		if current_cooldown <= 0:
 			print(name + ": Атакую " + combat_target.name)
