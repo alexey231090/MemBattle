@@ -1,7 +1,7 @@
 [gd_scene load_steps=3 format=3 uid="uid://cx8fpx3oblxwu"]
 
 [ext_resource type="Script" uid="uid://do7yg36gxhyn7" path="res://scripts/Main3D.gd" id="1_main3d"]
-[ext_resource type="PackedScene" uid="uid://cifn515un773v" path="res://prefabs/GameField.tscn" id="2_field"]
+[ext_resource type="PackedScene" uid="uid://cifn515un773v" path="res://Prefabs/GameField.tscn" id="2_field"]
 
 [node name="Main3D" type="Node3D"]
 script = ExtResource("1_main3d")
