@@ -1,0 +1,101 @@
+[gd_scene load_steps=2 format=3 uid="uid://cruf2euqqlkdu"]
+
+[ext_resource type="Script" uid="uid://1mkplnjr43br" path="res://scripts/Card.gd" id="1_card"]
+
+[node name="Card" type="Control"]
+custom_minimum_size = Vector2(200, 300)
+layout_mode = 3
+anchors_preset = 0
+offset_right = 200.0
+offset_bottom = 300.0
+script = ExtResource("1_card")
+
+[node name="Background" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="MarginContainer" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Name" type="Label" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "Имя карты"
+horizontal_alignment = 1
+
+[node name="Type" type="Label" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.8, 0.8, 1)
+theme_override_font_sizes/font_size = 14
+text = "Тип"
+horizontal_alignment = 1
+
+[node name="ImageContainer" type="Control" parent="MarginContainer/VBoxContainer"]
+custom_minimum_size = Vector2(0, 140)
+layout_mode = 2
+
+[node name="Image" type="TextureRect" parent="MarginContainer/VBoxContainer/ImageContainer"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Stats" type="HBoxContainer" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+alignment = 1
+
+[node name="Attack" type="Label" parent="MarginContainer/VBoxContainer/Stats"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "⚔️ 0"
+horizontal_alignment = 1
+
+[node name="Health" type="Label" parent="MarginContainer/VBoxContainer/Stats"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "❤️ 0"
+horizontal_alignment = 1
+
+[node name="Speed" type="Label" parent="MarginContainer/VBoxContainer/Stats"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "⚡ 0"
+horizontal_alignment = 1
+
+[node name="HSeparator" type="HSeparator" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+
+[node name="Ability" type="Label" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Способность"
+horizontal_alignment = 1
+
+[node name="Description" type="Label" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.8, 0.8, 1)
+theme_override_font_sizes/font_size = 12
+text = "Описание способности"
+horizontal_alignment = 1
+autowrap_mode = 2

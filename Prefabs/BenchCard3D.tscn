@@ -1,0 +1,50 @@
+[gd_scene load_steps=5 format=3 uid="uid://dub3gvb3t3bm1"]
+
+[ext_resource type="Script" uid="uid://inok4p05ngr4" path="res://scripts/Card3D.gd" id="1_bench_card"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_bench"]
+size = Vector3(0.8, 1.2, 0.05)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_bench_card"]
+albedo_color = Color(0.8, 0.8, 0.8, 1)
+metallic = 0.2
+roughness = 0.3
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_bench"]
+size = Vector3(0.8, 1.2, 0.05)
+
+[node name="BenchCard3D" type="CharacterBody3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0)
+collision_mask = 0
+script = ExtResource("1_bench_card")
+
+[node name="CardMesh" type="MeshInstance3D" parent="."]
+mesh = SubResource("BoxMesh_bench")
+surface_material_override/0 = SubResource("StandardMaterial3D_bench_card")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+shape = SubResource("BoxShape3D_bench")
+
+[node name="Sprite3D" type="Sprite3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.026)
+pixel_size = 0.0015
+billboard = 1
+texture_filter = 0
+
+[node name="Stats" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.03)
+
+[node name="NameLabel" type="Label3D" parent="Stats"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+pixel_size = 0.002
+text = "Card Name"
+
+[node name="AttackLabel" type="Label3D" parent="Stats"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.3, -0.5, 0)
+pixel_size = 0.002
+text = "⚔️ 0"
+
+[node name="HealthLabel" type="Label3D" parent="Stats"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.3, -0.5, 0)
+pixel_size = 0.002
+text = "❤️ 0"
