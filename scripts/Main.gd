@@ -14,6 +14,3 @@ func display_all_cards():
 			var card_instance = card_manager.create_card_instance(card_data["id"])
 			if card_instance:
 				cards_grid.add_child(card_instance) 
-
-func dwaawdawd():
-	pass
