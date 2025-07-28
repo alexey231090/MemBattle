@@ -48,6 +48,8 @@ func _on_battle_button_pressed():
 func start_battle():
 	print("Начало боя!")
 	var board_size = game_field.GRID_SIZE
+	var board_cells = game_field.get_board_cells()
+	var board_cards = game_field.board_cards
 	
 	# Собираем все карты на поле
 	var all_cards = []
@@ -55,25 +57,31 @@ func start_battle():
 	# Проходим по каждой ячейке поля
 	for row in range(board_size.x):
 		for col in range(board_size.y):
-			var cell_pos = game_field.board_cells[row][col]
+			var cell_pos = board_cells[row][col]
 			var card = game_field.get_card_at_position(cell_pos)
 			if card:
-				print("Найдена карта в позиции: ", cell_pos)
+				# --- Для каждой карты определяем её row/col на сетке ---
+				var nearest_row = -1
+				var nearest_col = -1
+				for r in range(board_cells.size()):
+					for c in range(board_cells[0].size()):
+						if board_cells[r][c].distance_to(card.global_position) < 0.5:
+							nearest_row = r
+							nearest_col = c
+							break
+					if nearest_row != -1:
+						break
 				all_cards.append({
 					"card": card,
 					"pos": cell_pos,
-					"row": row,
-					"col": col,
+					"row": nearest_row,
+					"col": nearest_col,
 					"is_enemy": card.scene_file_path.contains("EnemyCard3D")
 				})
-				print("Это " + ("враг" if card.scene_file_path.contains("EnemyCard3D") else "союзник"))
-	
-	print("Всего найдено карт: ", all_cards.size())
 	
 	# Разделяем карты на союзников и врагов
 	var allies = []
 	var enemies = []
-	
 	for card_data in all_cards:
 		if !is_instance_valid(card_data.card):
 			continue
@@ -82,46 +90,36 @@ func start_battle():
 		else:
 			allies.append(card_data)
 	
-	# Для каждого союзника ищем ближайшего врага (включая диагональ)
+	# --- ГРУППИРУЕМ АТАКУЮЩИХ ПО ЦЕЛЯМ ---
+	var enemy_to_allies := {}
 	for ally in allies:
 		if !is_instance_valid(ally.card):
 			continue
-			
 		var closest_enemy = null
 		var min_distance = INF
-		
 		for enemy in enemies:
 			if !is_instance_valid(enemy.card):
 				continue
-				
-			# Вычисляем расстояние по обеим осям
 			var dx = abs(enemy.col - ally.col)
 			var dz = abs(enemy.row - ally.row)
-			
-			# Используем максимум из расстояний как общее расстояние
 			var distance = max(dx, dz)
-			
 			if distance < min_distance:
 				min_distance = distance
 				closest_enemy = enemy
-		
 		if closest_enemy and is_instance_valid(closest_enemy.card):
-			print("Начинаем бой между: ", ally.card.name, " и ", closest_enemy.card.name)
-			print("Расстояние: ", min_distance, " ячеек")
-			
-			# Если расстояние больше 1, нужно двигаться к противнику
-			if min_distance > 1:
-				var path = find_path_to_enemy(ally, closest_enemy, all_cards)
-				if path.size() > 0:
-					print("Найден путь к противнику, длина: ", path.size())
-					ally.card.combat_target = closest_enemy.card
-					ally.card.move_along_path(path)
-				else:
-					print("Путь к противнику не найден")
-			else:
-				# Если противник рядом (включая диагональ), сразу начинаем бой
-				ally.card.start_combat(closest_enemy.card, ally.pos)
-				closest_enemy.card.start_combat(ally.card, closest_enemy.pos)
+			if not enemy_to_allies.has(closest_enemy):
+				enemy_to_allies[closest_enemy] = []
+			enemy_to_allies[closest_enemy].append(ally)
+	
+	# --- СОЮЗНИКИ ПРОСТО ДВИГАЮТСЯ К ВРАГУ ---
+	for enemy in enemy_to_allies.keys():
+		var attackers = enemy_to_allies[enemy]
+		for i in range(attackers.size()):
+			var ally = attackers[i]
+			if !is_instance_valid(ally.card):
+				continue
+			ally.card.combat_target = enemy.card
+			ally.card.move_to(enemy.card.global_position)
 
 func get_lowest_f_score(open_set: Array, f_score: Dictionary) -> Vector2:
 	var lowest = open_set[0]
@@ -521,3 +519,31 @@ func try_direct_path(start: Vector2, end: Vector2, occupied: Dictionary) -> Arra
 		path.pop_back()
 	
 	return path 
+
+# --- ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ: поиск свободных ячеек вокруг цели ---
+func get_free_cells_around_target(enemy_row: int, enemy_col: int, board_cards: Dictionary, board_cells: Array, max_count: int) -> Array:
+	var directions = [
+		Vector2(-1, -1), Vector2(-1, 0), Vector2(-1, 1),
+		Vector2(0, -1),                Vector2(0, 1),
+		Vector2(1, -1), Vector2(1, 0), Vector2(1, 1)
+	]
+	var free_cells = []
+	for dir in directions:
+		var r = enemy_row + int(dir.x)
+		var c = enemy_col + int(dir.y)
+		if r >= 0 and r < board_cells.size() and c >= 0 and c < board_cells[0].size():
+			var cell_pos = board_cells[r][c]
+			if not board_cards.has(cell_pos):
+				free_cells.append(cell_pos)
+				if free_cells.size() >= max_count:
+					break
+	return free_cells
+
+# --- ДОБАВЛЯЕМ ВСПОМОГАТЕЛЬНУЮ ФУНКЦИЮ ---
+func get_positions_around_target(center: Vector3, count: int, radius: float = 2.0) -> Array:
+	var positions = []
+	for i in range(count):
+		var angle = (TAU / count) * i
+		var offset = Vector3(radius * cos(angle), 0, radius * sin(angle))
+		positions.append(center + offset)
+	return positions 

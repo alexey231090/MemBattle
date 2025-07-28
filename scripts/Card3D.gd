@@ -139,6 +139,12 @@ func _physics_process(delta):
 			if is_moving_along_path:
 				current_path_index += 1
 				move_to_next_path_point()
+		# --- ОСТАНАВЛИВАЕМСЯ, ЕСЛИ БЛИЗКО К ЦЕЛИ ---
+	if is_moving and combat_target and is_instance_valid(combat_target):
+		if global_position.distance_to(combat_target.global_position) <= 2.0:
+			is_moving = false
+			velocity = Vector3.ZERO
+			start_combat(combat_target, global_position)
 	
 	if is_fighting and combat_target and is_instance_valid(combat_target) and combat_target.current_health > 0:
 		current_cooldown -= delta
