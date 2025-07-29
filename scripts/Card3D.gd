@@ -26,6 +26,12 @@ var movement_path: Array = []  # Путь как массив позиций
 var is_moving_along_path: bool = false
 var current_path_index: int = 0
 
+# Переменные для кругового позиционирования
+var attacker_index: int = 0
+var total_attackers: int = 1
+var position_fixed: bool = false
+var target_offset: Vector3 = Vector3.ZERO
+
 func _ready():
 	# Устанавливаем слой коллизии для карты
 	collision_layer = 1  # Слой для карт
@@ -95,6 +101,7 @@ func start_combat(target: Node, cell_pos: Vector3):
 func stop_combat():
 	is_fighting = false
 	combat_target = null
+	position_fixed = false  # Сбрасываем фиксацию позиции
 	# Не возвращаемся на исходную позицию, чтобы система переназначения целей могла найти новую цель
 
 func take_damage(amount: float):
@@ -135,6 +142,15 @@ func _physics_process(delta):
 			velocity = Vector3.ZERO
 			stop_combat()
 			return
+		
+		# Обновляем целевую позицию во время движения (если есть combat_target и позиция не зафиксирована)
+		if combat_target and is_instance_valid(combat_target) and not position_fixed:
+			# Пересчитываем позицию по кругу
+			var new_target_position = calculate_circle_position(combat_target, attacker_index, total_attackers)
+			target_position = new_target_position
+		elif position_fixed and combat_target and is_instance_valid(combat_target):
+			# Обновляем позицию относительно движущейся цели
+			target_position = combat_target.global_position + target_offset
 			
 		var direction = (target_position - global_position)
 		if direction.length() > 0.1:
@@ -143,7 +159,6 @@ func _physics_process(delta):
 		else:
 			is_moving = false
 			global_position = target_position
-			velocity = Vector3.ZERO
 			
 			# Если движемся по пути, переходим к следующей точке
 			if is_moving_along_path:
@@ -159,8 +174,8 @@ func _physics_process(delta):
 			stop_combat()
 			return
 			
-		# Проверяем, достигли ли мы целевой позиции или близко к врагу
-		if global_position.distance_to(target_position) <= 0.5 or global_position.distance_to(combat_target.global_position) <= 2.5:
+		# Проверяем, достигли ли мы целевой позиции
+		if global_position.distance_to(target_position) <= 0.5:
 			is_moving = false
 			velocity = Vector3.ZERO
 			start_combat(combat_target, global_position)
@@ -187,18 +202,89 @@ func move_to(pos: Vector3):
 	target_position = pos
 	is_moving = true
 
-func move_to_enemy(enemy: Node):
+# Функция для расчета точки встречи двух движущихся объектов
+func calculate_interception_point(target: Node, my_speed: float, target_speed: float = 0.0) -> Vector3:
+	if !is_instance_valid(target):
+		return global_position
+	
+	# Если цель не движется, идем прямо к ней
+	if target_speed <= 0.0 or not target.has_method("get_velocity") or target.get_velocity().length() < 0.1:
+		return target.global_position
+	
+	var target_velocity = target.get_velocity()
+	var relative_position = target.global_position - global_position
+	var relative_velocity = target_velocity
+	
+	# Рассчитываем время до встречи
+	var a = target_velocity.length_squared() - my_speed * my_speed
+	var b = 2.0 * relative_position.dot(target_velocity)
+	var c = relative_position.length_squared()
+	
+	var discriminant = b * b - 4.0 * a * c
+	if discriminant < 0:
+		# Нет решения, идем прямо к цели
+		return target.global_position
+	
+	var time = (-b - sqrt(discriminant)) / (2.0 * a)
+	if time < 0:
+		time = (-b + sqrt(discriminant)) / (2.0 * a)
+	
+	# Рассчитываем позицию встречи
+	var interception_point = target.global_position + target_velocity * time
+	return interception_point
+
+# Функция для расчета позиции по кругу вокруг цели
+func calculate_circle_position(target: Node, attacker_index: int, total_attackers: int, closest_attacker_position: Vector3 = Vector3.ZERO, circle_radius: float = 1.2) -> Vector3:
+	if !is_instance_valid(target):
+		return global_position
+	
+	# Если только один атакующий, он идет прямо к цели
+	if total_attackers == 1:
+		var direction = (target.global_position - global_position).normalized()
+		return target.global_position - direction * circle_radius
+	
+	# Первый атакующий (индекс 0) идет в ближайшую точку к врагу
+	if attacker_index == 0:
+		var direction = (target.global_position - global_position).normalized()
+		return target.global_position - direction * circle_radius
+	
+	# Остальные атакующие равномерно распределяются по кругу вокруг врага
+	# Начинаем с угла первого атакующего и распределяем остальных
+	var first_attacker_direction = (target.global_position - global_position).normalized()
+	var first_angle = atan2(first_attacker_direction.z, first_attacker_direction.x)
+	
+	# Распределяем остальных атакующих по кругу
+	var angle_step = 2.0 * PI / total_attackers
+	var current_angle = first_angle + (attacker_index * angle_step)
+	
+	# Рассчитываем позицию на окружности вокруг врага
+	var circle_pos = Vector3(
+		target.global_position.x + cos(current_angle) * circle_radius,
+		target.global_position.y,  # Сохраняем ту же высоту
+		target.global_position.z + sin(current_angle) * circle_radius
+	)
+	
+	return circle_pos
+
+func move_to_enemy(enemy: Node, attacker_index: int = 0, total_attackers: int = 1):
 	# Проверяем, что враг все еще существует
 	if !is_instance_valid(enemy):
 		return
+	
+	# Сохраняем параметры позиционирования
+	self.attacker_index = attacker_index
+	self.total_attackers = total_attackers
+	
 	combat_target = enemy
 	is_fighting = true
 	current_cooldown = 0.0
 	
-	# Рассчитываем позицию на определенном расстоянии от врага
-	var direction = (global_position - enemy.global_position).normalized()
-	var attack_distance = 2.0  # Расстояние для атаки
-	var target_pos = enemy.global_position + direction * attack_distance
+	# Рассчитываем позицию по кругу вокруг врага
+	var circle_position = calculate_circle_position(enemy, attacker_index, total_attackers)
 	
-	target_position = target_pos
+	# Сохраняем смещение относительно цели
+	target_offset = circle_position - enemy.global_position
+	position_fixed = true
+	
+	target_position = circle_position
 	is_moving = true 

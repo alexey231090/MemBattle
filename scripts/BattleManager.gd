@@ -42,6 +42,12 @@ func find_new_targets_for_orphaned_cards(allies: Array, enemies: Array):
 	allies = allies.filter(func(ally): return is_instance_valid(ally.card))
 	enemies = enemies.filter(func(enemy): return is_instance_valid(enemy.card))
 	
+	# Создаем временные назначения для новых целей
+	var new_assignments = {
+		"enemy_to_allies": {},
+		"ally_to_enemies": {}
+	}
+	
 	# Проверяем союзников без целей
 	for ally in allies:
 		if !is_instance_valid(ally.card):
@@ -52,8 +58,10 @@ func find_new_targets_for_orphaned_cards(allies: Array, enemies: Array):
 			var new_target = find_closest_target(ally.card, enemies)
 			if new_target.size() > 0 and is_instance_valid(new_target.card):
 				print("Новая цель: ", ally.card.name, " -> ", new_target.card.name)
-				ally.card.move_to_enemy(new_target.card)
-				ally.card.is_fighting = true  # Устанавливаем флаг боя
+				# Добавляем в временные назначения
+				if not new_assignments.enemy_to_allies.has(new_target):
+					new_assignments.enemy_to_allies[new_target] = []
+				new_assignments.enemy_to_allies[new_target].append(ally)
 	
 	# Проверяем врагов без целей
 	for enemy in enemies:
@@ -65,8 +73,13 @@ func find_new_targets_for_orphaned_cards(allies: Array, enemies: Array):
 			var new_target = find_closest_target(enemy.card, allies)
 			if new_target.size() > 0 and is_instance_valid(new_target.card):
 				print("Новая цель: ", enemy.card.name, " -> ", new_target.card.name)
-				enemy.card.move_to_enemy(new_target.card)
-				enemy.card.is_fighting = true  # Устанавливаем флаг боя
+				# Добавляем в временные назначения
+				if not new_assignments.ally_to_enemies.has(new_target):
+					new_assignments.ally_to_enemies[new_target] = []
+				new_assignments.ally_to_enemies[new_target].append(enemy)
+	
+	# Выполняем новые назначения с круговым позиционированием
+	execute_battle(new_assignments)
 
 # Функция для поиска ближайшей цели
 func find_closest_target(attacker_card: Node, targets: Array) -> Dictionary:
@@ -95,15 +108,27 @@ func execute_battle(battle_assignments: Dictionary):
 	# Союзники атакуют врагов
 	for enemy in battle_assignments.enemy_to_allies.keys():
 		var attackers = battle_assignments.enemy_to_allies[enemy]
-		for attacker in attackers:
+		# Сортируем атакующих по расстоянию до цели (ближайшие первыми)
+		attackers.sort_custom(func(a, b): 
+			return a.card.global_position.distance_to(enemy.card.global_position) < b.card.global_position.distance_to(enemy.card.global_position)
+		)
+		
+		for i in range(attackers.size()):
+			var attacker = attackers[i]
 			if !is_instance_valid(attacker.card):
 				continue
-			attacker.card.move_to_enemy(enemy.card)
+			attacker.card.move_to_enemy(enemy.card, i, attackers.size())
 	
 	# Враги атакуют союзников
 	for ally in battle_assignments.ally_to_enemies.keys():
 		var attackers = battle_assignments.ally_to_enemies[ally]
-		for attacker in attackers:
+		# Сортируем атакующих по расстоянию до цели (ближайшие первыми)
+		attackers.sort_custom(func(a, b): 
+			return a.card.global_position.distance_to(ally.card.global_position) < b.card.global_position.distance_to(ally.card.global_position)
+		)
+		
+		for i in range(attackers.size()):
+			var attacker = attackers[i]
 			if !is_instance_valid(attacker.card):
 				continue
-			attacker.card.move_to_enemy(ally.card) 
+			attacker.card.move_to_enemy(ally.card, i, attackers.size()) 

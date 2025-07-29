@@ -58,7 +58,6 @@ func _on_battle_button_pressed():
 func start_battle():
 	var board_size = game_field.GRID_SIZE
 	var board_cells = game_field.get_board_cells()
-	var board_cards = game_field.board_cards
 	
 	# Собираем все карты на поле
 	var all_cards = []
