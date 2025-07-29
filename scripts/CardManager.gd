@@ -1,7 +1,6 @@
 extends Node
 
 var cards: Dictionary = {}
-var card_scene = preload("res://prefabs/Card.tscn")
 
 func _ready():
 	load_cards()
@@ -30,15 +29,6 @@ func load_cards():
 			print("Загружено карт: ", cards.size())
 	else:
 		print("Ошибка парсинга JSON: ", json.get_error_message())
-
-func create_card_instance(card_id: String) -> Control:
-	if not cards.has(card_id):
-		print("Ошибка: Карта с ID ", card_id, " не найдена")
-		return null
-		
-	var card_instance = card_scene.instantiate()
-	card_instance.setup(cards[card_id])
-	return card_instance
 
 func get_all_cards() -> Array:
 	return cards.values() 
