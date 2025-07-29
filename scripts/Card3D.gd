@@ -31,6 +31,10 @@ var attacker_index: int = 0
 var total_attackers: int = 1
 var position_fixed: bool = false
 var target_offset: Vector3 = Vector3.ZERO
+var target_id: String = ""  # ID цели для координации
+
+# Статическая переменная для координации позиций атакующих
+static var target_positions: Dictionary = {}
 
 func _ready():
 	# Устанавливаем слой коллизии для карты
@@ -102,6 +106,7 @@ func stop_combat():
 	is_fighting = false
 	combat_target = null
 	position_fixed = false  # Сбрасываем фиксацию позиции
+	target_id = ""  # Сбрасываем ID цели
 	# Не возвращаемся на исходную позицию, чтобы система переназначения целей могла найти новую цель
 
 func take_damage(amount: float):
@@ -110,6 +115,11 @@ func take_damage(amount: float):
 		die()
 
 func die():
+	# Очищаем позиции для этой карты как цели
+	var my_id = str(get_instance_id())
+	if target_positions.has(my_id):
+		target_positions.erase(my_id)
+	
 	# Уведомляем о гибели карты
 	card_died.emit()
 	queue_free()
@@ -234,7 +244,7 @@ func calculate_interception_point(target: Node, my_speed: float, target_speed: f
 	return interception_point
 
 # Функция для расчета позиции по кругу вокруг цели
-func calculate_circle_position(target: Node, attacker_index: int, total_attackers: int, closest_attacker_position: Vector3 = Vector3.ZERO, circle_radius: float = 1.2) -> Vector3:
+func calculate_circle_position(target: Node, attacker_index: int, total_attackers: int, circle_radius: float = 1.5) -> Vector3:
 	if !is_instance_valid(target):
 		return global_position
 	
@@ -243,19 +253,14 @@ func calculate_circle_position(target: Node, attacker_index: int, total_attacker
 		var direction = (target.global_position - global_position).normalized()
 		return target.global_position - direction * circle_radius
 	
-	# Первый атакующий (индекс 0) идет в ближайшую точку к врагу
-	if attacker_index == 0:
-		var direction = (target.global_position - global_position).normalized()
-		return target.global_position - direction * circle_radius
+	# Все атакующие равномерно распределяются по кругу вокруг врага
+	# Начинаем с направления от атакующего к врагу
+	var direction_to_target = (target.global_position - global_position).normalized()
+	var start_angle = atan2(direction_to_target.z, direction_to_target.x)
 	
-	# Остальные атакующие равномерно распределяются по кругу вокруг врага
-	# Начинаем с угла первого атакующего и распределяем остальных
-	var first_attacker_direction = (target.global_position - global_position).normalized()
-	var first_angle = atan2(first_attacker_direction.z, first_attacker_direction.x)
-	
-	# Распределяем остальных атакующих по кругу
+	# Распределяем всех атакующих равномерно по кругу
 	var angle_step = 2.0 * PI / total_attackers
-	var current_angle = first_angle + (attacker_index * angle_step)
+	var current_angle = start_angle + (attacker_index * angle_step)
 	
 	# Рассчитываем позицию на окружности вокруг врага
 	var circle_pos = Vector3(
@@ -266,6 +271,84 @@ func calculate_circle_position(target: Node, attacker_index: int, total_attacker
 	
 	return circle_pos
 
+# Функция для поиска ближайшей свободной позиции по краю круга
+func find_nearest_free_position(target: Node, attacker_index: int, total_attackers: int, circle_radius: float = 1.5, min_distance: float = 0.3) -> Vector3:
+	if !is_instance_valid(target):
+		return global_position
+	
+	# Если только один атакующий, он идет прямо к цели
+	if total_attackers == 1:
+		var direction = (target.global_position - global_position).normalized()
+		return target.global_position - direction * circle_radius
+	
+	# Находим направление от атакующего к цели
+	var target_pos: Vector3
+	var my_pos: Vector3
+	
+	if target.is_inside_tree():
+		target_pos = target.global_position
+	else:
+		target_pos = target.position
+		
+	if is_inside_tree():
+		my_pos = global_position
+	else:
+		my_pos = position
+	
+	var direction_to_target = (target_pos - my_pos).normalized()
+	var start_angle = atan2(direction_to_target.z, direction_to_target.x)
+	
+	# Проверяем все возможные позиции по кругу
+	var best_position = Vector3.ZERO
+	var min_total_distance = INF
+	
+	# Проверяем позиции с шагом 10 градусов (примерно 10 см)
+	var angle_step = deg_to_rad(10.0)  # 10 градусов
+	var max_attempts = 36  # 360 градусов / 10 градусов
+	
+	for attempt in range(max_attempts):
+		var test_angle = start_angle + (attempt * angle_step)
+		
+		# Рассчитываем тестовую позицию
+		var test_position = Vector3(
+			target_pos.x + cos(test_angle) * circle_radius,
+			target_pos.y,
+			target_pos.z + sin(test_angle) * circle_radius
+		)
+		
+		# Проверяем, не занята ли эта позиция другими атакующими
+		var is_position_free = true
+		var total_distance = my_pos.distance_to(test_position)
+		
+		# Проверяем расстояние до других уже назначенных позиций
+		if target_positions.has(target_id):
+			for i in range(attacker_index):
+				if target_positions[target_id].has(i):
+					var other_offset = target_positions[target_id][i]
+					var other_position = target_pos + other_offset
+					var distance_to_other = test_position.distance_to(other_position)
+					
+					if distance_to_other < min_distance:
+						is_position_free = false
+						break
+		
+		# Если позиция свободна и ближе к текущему атакующему
+		if is_position_free and total_distance < min_total_distance:
+			min_total_distance = total_distance
+			best_position = test_position
+	
+	# Если не нашли свободную позицию, используем равномерное распределение
+	if best_position == Vector3.ZERO:
+		var angle_step_uniform = 2.0 * PI / total_attackers
+		var current_angle = start_angle + (attacker_index * angle_step_uniform)
+		best_position = Vector3(
+			target_pos.x + cos(current_angle) * circle_radius,
+			target_pos.y,
+			target_pos.z + sin(current_angle) * circle_radius
+		)
+	
+	return best_position
+
 func move_to_enemy(enemy: Node, attacker_index: int = 0, total_attackers: int = 1):
 	# Проверяем, что враг все еще существует
 	if !is_instance_valid(enemy):
@@ -274,17 +357,29 @@ func move_to_enemy(enemy: Node, attacker_index: int = 0, total_attackers: int = 
 	# Сохраняем параметры позиционирования
 	self.attacker_index = attacker_index
 	self.total_attackers = total_attackers
+	self.target_id = str(enemy.get_instance_id())
 	
 	combat_target = enemy
 	is_fighting = true
 	current_cooldown = 0.0
 	
-	# Рассчитываем позицию по кругу вокруг врага
-	var circle_position = calculate_circle_position(enemy, attacker_index, total_attackers)
+
 	
-	# Сохраняем смещение относительно цели
-	target_offset = circle_position - enemy.global_position
+	# Проверяем, есть ли уже рассчитанные позиции для этой цели
+	if not target_positions.has(target_id):
+		# Первый раз рассчитываем позиции для всех атакующих с умным поиском
+		target_positions[target_id] = {}
+		for i in range(total_attackers):
+			var circle_position = find_nearest_free_position(enemy, i, total_attackers)
+			var offset = circle_position - enemy.global_position
+			target_positions[target_id][i] = offset
+	
+	# Используем предварительно рассчитанную позицию
+	var offset = target_positions[target_id][attacker_index]
+	target_offset = offset
 	position_fixed = true
 	
-	target_position = circle_position
+	target_position = enemy.global_position + offset
 	is_moving = true 
+
+ 

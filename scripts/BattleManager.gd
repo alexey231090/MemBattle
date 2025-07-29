@@ -113,6 +113,8 @@ func execute_battle(battle_assignments: Dictionary):
 			return a.card.global_position.distance_to(enemy.card.global_position) < b.card.global_position.distance_to(enemy.card.global_position)
 		)
 		
+
+		
 		for i in range(attackers.size()):
 			var attacker = attackers[i]
 			if !is_instance_valid(attacker.card):
@@ -126,6 +128,8 @@ func execute_battle(battle_assignments: Dictionary):
 		attackers.sort_custom(func(a, b): 
 			return a.card.global_position.distance_to(ally.card.global_position) < b.card.global_position.distance_to(ally.card.global_position)
 		)
+		
+
 		
 		for i in range(attackers.size()):
 			var attacker = attackers[i]
