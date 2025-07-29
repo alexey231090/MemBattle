@@ -1,5 +1,8 @@
 extends CharacterBody3D
 
+# Сигнал для уведомления о гибели карты
+signal card_died
+
 var move_speed: float = 5.0
 var target_position: Vector3 = Vector3.ZERO
 var is_moving: bool = false
@@ -73,12 +76,12 @@ func update_health_bar():
 # Функция для изменения здоровья
 func set_health(new_health: float):
 	current_health = clamp(new_health, 0, max_health)
-	print(name + ": Здоровье обновлено: " + str(current_health))
 	update_health_bar()
 
 func start_combat(target: Node, cell_pos: Vector3):
-	print(name + ": Начинаю бой с " + target.name)
-	print(name + ": Моя позиция: " + str(global_position) + ", позиция цели: " + str(target.global_position))
+	# Проверяем, что цель существует
+	if !is_instance_valid(target):
+		return
 	
 	combat_target = target
 	original_cell_position = cell_pos
@@ -86,23 +89,22 @@ func start_combat(target: Node, cell_pos: Vector3):
 	current_cooldown = 0.0  # Сбрасываем таймер атаки
 	
 	# Если цель еще не в бою, инициируем бой с её стороны
-	if combat_target and not combat_target.is_fighting:
+	if combat_target and is_instance_valid(combat_target) and not combat_target.is_fighting:
 		combat_target.start_combat(self, combat_target.global_position)
 
 func stop_combat():
-	print(name + ": Прекращаю бой")
 	is_fighting = false
 	combat_target = null
-	move_to(original_cell_position)  # Возвращаемся в центр ячейки
+	# Не возвращаемся на исходную позицию, чтобы система переназначения целей могла найти новую цель
 
 func take_damage(amount: float):
-	print(name + ": Получаю урон: " + str(amount))
 	set_health(current_health - amount)
 	if current_health <= 0:
 		die()
 
 func die():
-	print(name + ": Погибаю!")
+	# Уведомляем о гибели карты
+	card_died.emit()
 	queue_free()
 
 func move_along_path(path: Array):
@@ -126,6 +128,14 @@ func move_to_next_path_point():
 
 func _physics_process(delta):
 	if is_moving:
+		# Проверяем цель во время движения
+		if combat_target and is_instance_valid(combat_target) and combat_target.current_health <= 0:
+			# Цель мертва, прекращаем движение
+			is_moving = false
+			velocity = Vector3.ZERO
+			stop_combat()
+			return
+			
 		var direction = (target_position - global_position)
 		if direction.length() > 0.1:
 			velocity = direction.normalized() * move_speed
@@ -141,27 +151,46 @@ func _physics_process(delta):
 				move_to_next_path_point()
 		# --- ОСТАНАВЛИВАЕМСЯ, ЕСЛИ ДОСТИГЛИ ЦЕЛЕВОЙ ПОЗИЦИИ ИЛИ БЛИЗКО К ВРАГУ ---
 	if is_moving and combat_target and is_instance_valid(combat_target):
+		# Проверяем, что цель все еще жива
+		if combat_target.current_health <= 0:
+			# Цель мертва, прекращаем движение и бой
+			is_moving = false
+			velocity = Vector3.ZERO
+			stop_combat()
+			return
+			
 		# Проверяем, достигли ли мы целевой позиции или близко к врагу
 		if global_position.distance_to(target_position) <= 0.5 or global_position.distance_to(combat_target.global_position) <= 2.5:
 			is_moving = false
 			velocity = Vector3.ZERO
 			start_combat(combat_target, global_position)
 	
-	if is_fighting and combat_target and is_instance_valid(combat_target) and combat_target.current_health > 0:
+	if is_fighting and combat_target and is_instance_valid(combat_target):
+		# Проверяем, что цель жива
+		if combat_target.current_health <= 0:
+			# Цель мертва, прекращаем бой
+			stop_combat()
+			return
+			
 		current_cooldown -= delta
 		if current_cooldown <= 0:
-			print(name + ": Атакую " + combat_target.name)
-			# Атакуем противника
-			combat_target.take_damage(attack_damage)
-			current_cooldown = attack_cooldown
+			# Дополнительная проверка перед атакой
+			if is_instance_valid(combat_target):
+				# Атакуем противника
+				combat_target.take_damage(attack_damage)
+				current_cooldown = attack_cooldown
+			else:
+				# Цель погибла, прекращаем бой
+				stop_combat()
 
 func move_to(pos: Vector3):
-	print(name + ": Двигаюсь к позиции: " + str(pos))
 	target_position = pos
 	is_moving = true
 
 func move_to_enemy(enemy: Node):
-	print(name + ": Двигаюсь к врагу: " + enemy.name)
+	# Проверяем, что враг все еще существует
+	if !is_instance_valid(enemy):
+		return
 	combat_target = enemy
 	is_fighting = true
 	current_cooldown = 0.0

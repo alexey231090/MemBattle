@@ -18,6 +18,9 @@ var enemy_spawn_position = Vector3(0, 0, 12)  # Позиция за доской
 # Создаем экземпляр менеджера боя
 var battle_manager = BattleManager.new()
 
+# Флаг активности боя
+var is_battle_active: bool = false
+
 func _ready():
 	create_test_cards()
 	battle_button.pressed.connect(_on_battle_button_pressed)
@@ -35,6 +38,8 @@ func spawn_enemy_card():
 	enemy_card.global_position.y += 1.0
 	# Добавляем метку, что это карта для спавна
 	enemy_card.set_meta("is_spawn_card", true)
+	# Подключаем сигнал гибели карты
+	enemy_card.card_died.connect(check_for_new_targets)
 
 func create_test_cards():
 	# Создаем больше тестовых союзных капсул на скамейке для тестирования групповых атак
@@ -44,12 +49,13 @@ func create_test_cards():
 		var bench_pos = game_field.get_bench_cells()[i]
 		card.global_position = bench_pos
 		game_field.place_card(card, bench_pos)
+		# Подключаем сигнал гибели карты
+		card.card_died.connect(check_for_new_targets)
 
 func _on_battle_button_pressed():
 	start_battle()
 
 func start_battle():
-	print("Начало боя!")
 	var board_size = game_field.GRID_SIZE
 	var board_cells = game_field.get_board_cells()
 	var board_cards = game_field.board_cards
@@ -96,6 +102,9 @@ func start_battle():
 	# Используем BattleManager для поиска целей и выполнения боя
 	var battle_assignments = battle_manager.find_battle_targets(allies, enemies)
 	battle_manager.execute_battle(battle_assignments)
+	
+	# Устанавливаем флаг активности боя
+	is_battle_active = true
 
 func _input(event):
 	# Временное управление камерой для тестирования
@@ -114,32 +123,23 @@ func _input(event):
 	elif event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			if event.pressed:
-				print("Клик мышью")
 				# Начало перетаскивания
 				var result = raycast_from_mouse()
-				print("Результат raycast: ", result)
 				if result:
 					var card = null
 					if result.collider is CharacterBody3D:
-						print("Попали по карте напрямую")
 						card = result.collider
 					else:
-						print("Попали по ячейке, ищем карту")
 						card = game_field.get_card_at_position(result.position)
-						print("Найденная карта: ", card)
 					
 					if card:
-						print("Начинаем перетаскивание карты")
 						dragging_card = card
 						card_original_position = dragging_card.global_position
 						mouse_offset = result.position - dragging_card.global_position
 						update_highlight_position(dragging_card.global_position)
-					else:
-						print("Карта не найдена")
 			else:
 				# Конец перетаскивания
 				if dragging_card:
-					print("Завершаем перетаскивание")
 					var board_pos = game_field.find_nearest_board_cell(dragging_card.global_position)
 					var bench_pos = game_field.find_nearest_bench_cell(dragging_card.global_position)
 					
@@ -198,17 +198,14 @@ func raycast_from_mouse() -> Dictionary:
 	var to = from + camera.project_ray_normal(mouse_pos) * 1000
 	var space_state = get_world_3d().direct_space_state
 	
-	print("Проверяем столкновение с картами (слой 1)")
 	# Сначала проверяем столкновение с картами
 	var query = PhysicsRayQueryParameters3D.create(from, to)
 	query.collision_mask = 1  # Маска для карт
 	var card_result = space_state.intersect_ray(query)
 	
 	if card_result:
-		print("Нашли столкновение с картой")
 		return card_result
 	
-	print("Проверяем столкновение с ячейками (слой 2)")
 	# Если не попали по карте, проверяем ячейки
 	query.collision_mask = 2  # Маска для ячеек
 	query.collide_with_areas = true  # Важно для работы с Area3D
@@ -216,10 +213,57 @@ func raycast_from_mouse() -> Dictionary:
 	var cell_result = space_state.intersect_ray(query)
 	
 	if cell_result:
-		print("Нашли столкновение с ячейкой")
 		return cell_result
 	
-	print("Столкновений не найдено")
 	return {}
+
+# Функция для проверки новых целей при гибели карты
+func check_for_new_targets():
+	if not is_battle_active:
+		return
+	
+	# Очищаем мертвые карты из словарей
+	game_field.cleanup_dead_cards()
+	
+	# Собираем все карты на поле
+	var board_size = game_field.GRID_SIZE
+	var board_cells = game_field.get_board_cells()
+	var all_cards = []
+	
+	# Проходим по каждой ячейке поля
+	for row in range(board_size.x):
+		for col in range(board_size.y):
+			var cell_pos = board_cells[row][col]
+			var card = game_field.get_card_at_position(cell_pos)
+			if card:
+				all_cards.append({
+					"card": card,
+					"pos": cell_pos,
+					"is_enemy": card.scene_file_path.contains("EnemyCard3D")
+				})
+	
+	# Разделяем карты на союзников и врагов
+	var allies = []
+	var enemies = []
+	for card_data in all_cards:
+		if !is_instance_valid(card_data.card):
+			continue
+		if card_data.is_enemy:
+			enemies.append(card_data)
+		else:
+			allies.append(card_data)
+	
+	# Дополнительная фильтрация - убираем мертвые карты
+	allies = allies.filter(func(card_data): return is_instance_valid(card_data.card))
+	enemies = enemies.filter(func(card_data): return is_instance_valid(card_data.card))
+	
+	# Проверяем, есть ли еще живые карты обеих команд
+	if allies.size() == 0 or enemies.size() == 0:
+		# Бой закончен
+		is_battle_active = false
+		return
+	
+	# Ищем новые цели для карт без целей
+	battle_manager.find_new_targets_for_orphaned_cards(allies, enemies)
 
  

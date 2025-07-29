@@ -164,32 +164,36 @@ func find_nearest_bench_cell(pos: Vector3) -> Vector3:
 
 # Функции для работы с картами в ячейках
 func get_card_at_position(pos: Vector3) -> Node:
-	print("Ищем карту в позиции: ", pos)
-	
 	# Проверяем карты на поле
 	for row in range(GRID_SIZE.x):
 		for col in range(GRID_SIZE.y):
 			var cell_pos = board_cells[row][col]
 			if board_cards.has(cell_pos):
-				print("Проверяем позицию на поле: ", cell_pos, " с картой: ", board_cards[cell_pos])
 				# Используем более точное сравнение позиций
 				if (cell_pos - pos).length() < 0.1:
-					print("Нашли карту на поле!")
-					return board_cards[cell_pos]
+					var card = board_cards[cell_pos]
+					# Проверяем, что карта все еще существует
+					if is_instance_valid(card):
+						return card
+					else:
+						# Карта мертва, удаляем её из словаря
+						board_cards.erase(cell_pos)
 	
 	# Проверяем карты на скамейке
 	for bench_pos in bench_cells:
 		if bench_cards.has(bench_pos):
-			print("Проверяем позицию на скамейке: ", bench_pos, " с картой: ", bench_cards[bench_pos])
 			if (bench_pos - pos).length() < 0.1:
-				print("Нашли карту на скамейке!")
-				return bench_cards[bench_pos]
+				var card = bench_cards[bench_pos]
+				# Проверяем, что карта все еще существует
+				if is_instance_valid(card):
+					return card
+				else:
+					# Карта мертва, удаляем её из словаря
+					bench_cards.erase(bench_pos)
 	
-	print("Карта не найдена")
 	return null
 
 func place_card(card: Node, pos: Vector3):
-	print("Размещаем карту: ", card, " в позиции: ", pos)
 	# Удаляем карту с предыдущей позиции
 	remove_card(card)
 	
@@ -198,23 +202,38 @@ func place_card(card: Node, pos: Vector3):
 	var bench_pos = find_nearest_bench_cell(pos)
 	
 	if pos.distance_to(board_pos) < pos.distance_to(bench_pos):
-		print("Помещаем карту на поле в позиции: ", board_pos)
 		board_cards[board_pos] = card
 	else:
-		print("Помещаем карту на скамейку в позиции: ", bench_pos)
 		bench_cards[bench_pos] = card
 
 func remove_card(card: Node):
-	print("Удаляем карту: ", card)
 	# Удаляем карту из обоих словарей
 	for pos in board_cards.keys():
 		if board_cards[pos] == card:
-			print("Удаляем карту с поля из позиции: ", pos)
 			board_cards.erase(pos)
 			break
 	
 	for pos in bench_cards.keys():
 		if bench_cards[pos] == card:
-			print("Удаляем карту со скамейки из позиции: ", pos)
 			bench_cards.erase(pos)
-			break 
+			break
+
+# Функция для очистки мертвых карт из словарей
+func cleanup_dead_cards():
+	# Очищаем мертвые карты с поля
+	var dead_positions = []
+	for pos in board_cards.keys():
+		if not is_instance_valid(board_cards[pos]):
+			dead_positions.append(pos)
+	
+	for pos in dead_positions:
+		board_cards.erase(pos)
+	
+	# Очищаем мертвые карты со скамейки
+	dead_positions.clear()
+	for pos in bench_cards.keys():
+		if not is_instance_valid(bench_cards[pos]):
+			dead_positions.append(pos)
+	
+	for pos in dead_positions:
+		bench_cards.erase(pos) 
