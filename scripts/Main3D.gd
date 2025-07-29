@@ -15,6 +15,9 @@ var enemy_card_scene = preload("res://prefabs/EnemyCard3D.tscn")
 
 var enemy_spawn_position = Vector3(0, 0, 12)  # Позиция за доской
 
+# Создаем экземпляр менеджера боя
+var battle_manager = BattleManager.new()
+
 func _ready():
 	create_test_cards()
 	battle_button.pressed.connect(_on_battle_button_pressed)
@@ -90,71 +93,9 @@ func start_battle():
 		else:
 			allies.append(card_data)
 	
-	# --- ГРУППИРУЕМ АТАКУЮЩИХ ПО ЦЕЛЯМ ---
-	var enemy_to_allies := {}
-	for ally in allies:
-		if !is_instance_valid(ally.card):
-			continue
-		var closest_enemy = null
-		var min_distance = INF
-		for enemy in enemies:
-			if !is_instance_valid(enemy.card):
-				continue
-			# Используем реальное расстояние в 3D пространстве
-			var distance = ally.card.global_position.distance_to(enemy.card.global_position)
-			if distance < min_distance:
-				min_distance = distance
-				closest_enemy = enemy
-		if closest_enemy and is_instance_valid(closest_enemy.card):
-			if not enemy_to_allies.has(closest_enemy):
-				enemy_to_allies[closest_enemy] = []
-			enemy_to_allies[closest_enemy].append(ally)
-			print("Союзник ", ally.card.name, " атакует врага ", closest_enemy.card.name, " (расстояние: ", min_distance, ")")
-	
-	# --- ВСЕ КАРТЫ ДВИГАЮТСЯ К СВОИМ ЦЕЛЯМ НА ОПРЕДЕЛЕННОЕ РАССТОЯНИЕ ---
-	
-	# Союзники атакуют врагов
-	for enemy in enemy_to_allies.keys():
-		var attackers = enemy_to_allies[enemy]
-		for i in range(attackers.size()):
-			var attacker = attackers[i]
-			if !is_instance_valid(attacker.card):
-				continue
-			attacker.card.combat_target = enemy.card
-			# Простое движение к врагу на определенное расстояние
-			attacker.card.move_to_enemy(enemy.card)
-	
-	# Враги атакуют союзников
-	var ally_to_enemies := {}
-	for enemy in enemies:
-		if !is_instance_valid(enemy.card):
-			continue
-		var closest_ally = null
-		var min_distance = INF
-		for ally in allies:
-			if !is_instance_valid(ally.card):
-				continue
-			# Используем реальное расстояние в 3D пространстве
-			var distance = enemy.card.global_position.distance_to(ally.card.global_position)
-			if distance < min_distance:
-				min_distance = distance
-				closest_ally = ally
-		if closest_ally and is_instance_valid(closest_ally.card):
-			if not ally_to_enemies.has(closest_ally):
-				ally_to_enemies[closest_ally] = []
-			ally_to_enemies[closest_ally].append(enemy)
-			print("Враг ", enemy.card.name, " атакует союзника ", closest_ally.card.name, " (расстояние: ", min_distance, ")")
-	
-	# Враги двигаются к союзникам
-	for ally in ally_to_enemies.keys():
-		var attackers = ally_to_enemies[ally]
-		for i in range(attackers.size()):
-			var attacker = attackers[i]
-			if !is_instance_valid(attacker.card):
-				continue
-			attacker.card.combat_target = ally.card
-			# Простое движение к союзнику на определенное расстояние
-			attacker.card.move_to_enemy(ally.card)
+	# Используем BattleManager для поиска целей и выполнения боя
+	var battle_assignments = battle_manager.find_battle_targets(allies, enemies)
+	battle_manager.execute_battle(battle_assignments)
 
 func _input(event):
 	# Временное управление камерой для тестирования
