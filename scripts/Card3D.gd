@@ -139,9 +139,10 @@ func _physics_process(delta):
 			if is_moving_along_path:
 				current_path_index += 1
 				move_to_next_path_point()
-		# --- ОСТАНАВЛИВАЕМСЯ, ЕСЛИ БЛИЗКО К ЦЕЛИ ---
+		# --- ОСТАНАВЛИВАЕМСЯ, ЕСЛИ ДОСТИГЛИ ЦЕЛЕВОЙ ПОЗИЦИИ ИЛИ БЛИЗКО К ВРАГУ ---
 	if is_moving and combat_target and is_instance_valid(combat_target):
-		if global_position.distance_to(combat_target.global_position) <= 2.0:
+		# Проверяем, достигли ли мы целевой позиции или близко к врагу
+		if global_position.distance_to(target_position) <= 0.5 or global_position.distance_to(combat_target.global_position) <= 2.5:
 			is_moving = false
 			velocity = Vector3.ZERO
 			start_combat(combat_target, global_position)
@@ -157,4 +158,18 @@ func _physics_process(delta):
 func move_to(pos: Vector3):
 	print(name + ": Двигаюсь к позиции: " + str(pos))
 	target_position = pos
+	is_moving = true
+
+func move_to_enemy(enemy: Node):
+	print(name + ": Двигаюсь к врагу: " + enemy.name)
+	combat_target = enemy
+	is_fighting = true
+	current_cooldown = 0.0
+	
+	# Рассчитываем позицию на определенном расстоянии от врага
+	var direction = (global_position - enemy.global_position).normalized()
+	var attack_distance = 2.0  # Расстояние для атаки
+	var target_pos = enemy.global_position + direction * attack_distance
+	
+	target_position = target_pos
 	is_moving = true 
