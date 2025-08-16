@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="AIAssistantResource" load_steps=5 format=3 uid="uid://dmaodmcmofxm"]
+
+[ext_resource type="Resource" uid="uid://bxv0aypqsw2hd" path="res://addons/ai_assistant_hub/llm_providers/openrouter.tres" id="1_wabuy"]
+[ext_resource type="Script" uid="uid://b8xrdb4wxv5dj" path="res://addons/ai_assistant_hub/quick_prompts/ai_quick_prompt_resource.gd" id="2_6xjye"]
+[ext_resource type="Script" uid="uid://bsej0sclkhfwn" path="res://addons/ai_assistant_hub/assistants/ai_assistant_resource.gd" id="3_4rfv5"]
+
+[sub_resource type="Resource" id="Resource_wabuy"]
+script = ExtResource("2_6xjye")
+action_name = "Оптимизировать"
+action_prompt = "{CODE}"
+response_target = 1
+code_placement = 0
+format_response_as_comment = false
+metadata/_custom_type_script = "uid://b8xrdb4wxv5dj"
+
+[resource]
+script = ExtResource("3_4rfv5")
+type_name = "Felix"
+ai_model = "agentica-org/deepcoder-14b-preview"
+llm_provider = ExtResource("1_wabuy")
+ai_description = "You are a useful Godot AI assistant."
+use_custom_temperature = true
+custom_temperature = 0.5
+quick_prompts = Array[ExtResource("2_6xjye")]([SubResource("Resource_wabuy")])

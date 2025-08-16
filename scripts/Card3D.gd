@@ -10,16 +10,25 @@ var is_fighting: bool = false
 var attack_damage: float = 5.0
 var attack_cooldown: float = 1.0  # Время между атаками
 var current_cooldown: float = 0.0
-var combat_offset: float = 1.0  # Увеличиваем расстояние между картами в бою
+var combat_offset: float = 1.2  # Увеличиваем расстояние между картами в бою
 
 var max_health: float = 100.0
 var current_health: float = 100.0
 
 var health_bar: Node3D
 var health_sprite: Sprite3D
+var id_label: Label3D  # Добавляем метку для отображения ID
 
 var original_cell_position: Vector3  # Позиция центра ячейки
 var combat_target: Node  # Цель для атаки
+
+# Параметры карты из JSON
+var card_id: String = ""
+var card_attack: float = 0.0
+var card_health: float = 0.0
+var card_critical_attack: float = 0.0
+var card_type: String = ""
+var card_super_ability: String = ""
 
 # Система перемещения
 var movement_path: Array = []  # Путь как массив позиций
@@ -44,6 +53,9 @@ func _ready():
 	# Создаем полоску здоровья
 	setup_health_bar()
 	update_health_bar()
+
+	# Создаем метку для ID
+	setup_id_label()
 
 func setup_health_bar():
 	# Создаем контейнер для полоски здоровья
@@ -83,10 +95,58 @@ func update_health_bar():
 		var health_percent = current_health / max_health
 		health_sprite.scale.x = health_percent  # Масштабируем спрайт по X в зависимости от здоровья
 
+func setup_id_label():
+	# Создаем метку для ID карты
+	id_label = Label3D.new()
+	id_label.name = "IDLabel"
+	add_child(id_label)
+
+	# Поднимаем метку над капсулой
+	id_label.position.y = 2.5
+
+	# Настраиваем параметры метки
+	id_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED  # Всегда смотрит на камеру
+	id_label.no_depth_test = true  # Всегда отображается поверх объектов
+	id_label.pixel_size = 0.01
+	id_label.modulate = Color(1, 1, 0)  # Желтый цвет для ID
+
+	# Устанавливаем размер шрифта вместо размера метки
+	id_label.font_size = 32
+
+	# Устанавливаем начальный текст
+	id_label.text = card_id
+
 # Функция для изменения здоровья
 func set_health(new_health: float):
 	current_health = clamp(new_health, 0, max_health)
 	update_health_bar()
+
+# Функция для установки параметров карты из JSON
+func set_card_data(card_data: Dictionary):
+	if card_data.has("id"):
+		card_id = card_data["id"]
+		# Обновляем текст метки ID
+		if id_label:
+			id_label.text = card_id
+
+	if card_data.has("attack"):
+		card_attack = float(card_data["attack"])
+		attack_damage = card_attack  # Устанавливаем урон атаки
+
+	if card_data.has("health"):
+		card_health = float(card_data["health"])
+		max_health = card_health
+		current_health = card_health
+		update_health_bar()
+
+	if card_data.has("critical_attack"):
+		card_critical_attack = float(card_data["critical_attack"])
+
+	if card_data.has("type"):
+		card_type = card_data["type"]
+
+	if card_data.has("super_ability"):
+		card_super_ability = card_data["super_ability"]
 
 func start_combat(target: Node, cell_pos: Vector3):
 	# Проверяем, что цель существует
@@ -418,7 +478,7 @@ func move_to_enemy(enemy: Node, attacker_idx: int = 0, total_attackers_count: in
 	else:
 		# Если позиции уже есть, но нас там нет - добавляем себя
 		if not target_positions[target_id].has(attacker_idx):
-			var circle_position = find_nearest_free_position(enemy, attacker_idx, total_attackers_count, 1.5, 0.8)
+			var circle_position = find_nearest_free_position(enemy, attacker_idx, total_attackers_count)
 			var calculated_offset = circle_position - enemy.global_position
 			target_positions[target_id][attacker_idx] = calculated_offset
 	
@@ -430,7 +490,7 @@ func move_to_enemy(enemy: Node, attacker_idx: int = 0, total_attackers_count: in
 		target_position = enemy.global_position + final_offset
 	else:
 		# Если позиция не найдена, рассчитываем заново
-		var circle_position = find_nearest_free_position(enemy, attacker_idx, total_attackers_count, 1.5, 0.8)
+		var circle_position = find_nearest_free_position(enemy, attacker_idx, total_attackers_count)
 		target_offset = circle_position - enemy.global_position
 		position_fixed = true
 		target_position = circle_position

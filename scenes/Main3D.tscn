@@ -1,7 +1,8 @@
-[gd_scene load_steps=4 format=3 uid="uid://cx8fpx3oblxwu"]
+[gd_scene load_steps=5 format=3 uid="uid://cx8fpx3oblxwu"]
 
 [ext_resource type="Script" uid="uid://do7yg36gxhyn7" path="res://scripts/Main3D.gd" id="1_main"]
 [ext_resource type="PackedScene" uid="uid://cifn515un773v" path="res://Prefabs/GameField.tscn" id="2_field"]
+[ext_resource type="Script" uid="uid://keiy7ynx025a" path="res://scripts/CardManager.gd" id="3_card_manager"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_spawn"]
 transparency = 1
@@ -25,6 +26,9 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.11607, 0, -4.20265)
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.863111, 0, -0.805351)
 size = Vector3(2, 0.2, 2)
 material = SubResource("StandardMaterial3D_spawn")
+
+[node name="CardManager" type="Node" parent="."]
+script = ExtResource("3_card_manager")
 
 [node name="CanvasLayer" type="CanvasLayer" parent="."]
 

@@ -1,10 +1,10 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3 uid="uid://cny3tiinv70ic"]
 
-[ext_resource type="Script" path="res://scripts/EnemyCard3D.gd" id="1_enemycard3d"]
-[ext_resource type="PackedScene" uid="uid://d0gsmqo4042el" path="res://prefabs/Card3D.tscn" id="1_base"]
+[ext_resource type="PackedScene" uid="uid://d0gsmqo4042el" path="res://Prefabs/Card3D.tscn" id="1_base"]
+[ext_resource type="Script" uid="uid://dh3ui8s52ux43" path="res://scripts/EnemyCard3D.gd" id="1_enemycard3d"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_enemy"]
-albedo_color = Color(0.8, 0.2, 0.2, 1.0)
+albedo_color = Color(0.8, 0.2, 0.2, 1)
 metallic = 0.3
 roughness = 0.7
 
@@ -12,4 +12,4 @@ roughness = 0.7
 script = ExtResource("1_enemycard3d")
 
 [node name="MeshInstance3D" parent="." index="0"]
-surface_material_override/0 = SubResource("StandardMaterial3D_enemy") 
+surface_material_override/0 = SubResource("StandardMaterial3D_enemy")

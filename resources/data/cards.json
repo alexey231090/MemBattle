@@ -1,36 +1,20 @@
 {
   "cards": [
-    {
-      "id": "tralalero",
-      "name": "Тралалеро Тралала",
-      "type": "поющий",
-      "health": 20,
-      "attack": 3,
-      "speed": 1.2,
-      "ability": {
-        "name": "Оглушающая песня",
-        "effect": "stun",
-        "chance": 0.3,
-        "target": "enemy"
-      },
-      "sprite": "",
-      "description": "Поёт так громко, что оглушает врагов"
-    },
-    {
-      "id": "cappuccina",
-      "name": "Баллерина Капучина",
-      "type": "танцующий",
-      "health": 15,
-      "attack": 2,
-      "speed": 1.5,
-      "ability": {
-        "name": "Грациозный пируэт",
-        "effect": "dodge",
-        "chance": 0.4,
-        "target": "self"
-      },
-      "sprite": "",
-      "description": "Уворачивается от атак с изяществом балерины"
-    }
+	{
+	  "id": "tralalero",
+	  "attack": 3,
+	  "health": 20,
+	  "critical_attack": 5,
+	  "type": "боец",
+	  "super_ability": "Громовой крик"
+	},
+	{
+	  "id": "cappuccina",
+	  "attack": 2,
+	  "health": 15,
+	  "critical_attack": 4,
+	  "type": "дальний бой",
+	  "super_ability": "Танец теней"
+	}
   ]
 }

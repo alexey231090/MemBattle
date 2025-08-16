@@ -12,8 +12,12 @@ var enemy_card_scene = preload("res://prefabs/EnemyCard3D.tscn")
 @onready var game_field = $GameField
 @onready var battle_button = $CanvasLayer/BattleUI/BattleButton
 @onready var spawn_area = $SpawnArea
+@onready var card_manager = $CardManager
 
 var enemy_spawn_position = Vector3(0, 0, 12)  # Позиция за доской
+
+# Загружаем скрипт BattleManager
+var BattleManager = load("res://scripts/BattleManager.gd")
 
 # Создаем экземпляр менеджера боя
 var battle_manager = BattleManager.new()
@@ -30,6 +34,9 @@ func create_enemy_spawn():
 	spawn_enemy_card()
 
 func spawn_enemy_card():
+	# Получаем все доступные карты
+	var all_cards_data = card_manager.get_all_cards()
+
 	var enemy_card = enemy_card_scene.instantiate()
 	add_child(enemy_card)
 	# Используем позицию SpawnArea
@@ -38,10 +45,21 @@ func spawn_enemy_card():
 	enemy_card.global_position.y += 1.0
 	# Добавляем метку, что это карта для спавна
 	enemy_card.set_meta("is_spawn_card", true)
+
+	# Присваиваем карте параметры из JSON, если есть доступные данные
+	if all_cards_data.size() > 0:
+		# Выбираем случайную карту
+		var random_index = randi() % all_cards_data.size()
+		var card_data = all_cards_data[random_index]
+		enemy_card.set_card_data(card_data)
+
 	# Подключаем сигнал гибели карты
 	enemy_card.card_died.connect(check_for_new_targets)
 
 func create_test_cards():
+	# Получаем все доступные карты
+	var all_cards_data = card_manager.get_all_cards()
+
 	# Создаем больше тестовых союзных капсул на скамейке для тестирования групповых атак
 	for i in range(5):  # Увеличиваем количество карт для тестирования
 		var card = ally_card_scene.instantiate()
@@ -49,6 +67,13 @@ func create_test_cards():
 		var bench_pos = game_field.get_bench_cells()[i]
 		card.global_position = bench_pos
 		game_field.place_card(card, bench_pos)
+
+		# Присваиваем карте параметры из JSON, если есть доступные данные
+		if all_cards_data.size() > 0:
+			# Выбираем случайную карту или поочередно
+			var card_data = all_cards_data[i % all_cards_data.size()]
+			card.set_card_data(card_data)
+
 		# Подключаем сигнал гибели карты
 		card.card_died.connect(check_for_new_targets)
 
