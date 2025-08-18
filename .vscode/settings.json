@@ -3,5 +3,6 @@
     "Codegeex.Chat.LanguagePreference": "English",
     "Codegeex.Comment.LanguagePreference": "English",
     "Codegeex.CommitMessage.LanguagePreference": "English",
-    "godotTools.editorPath.godot4": "e:\\Programm\\Godot4\\Godot_v4.4.1-stable_win64.exe"
+    "godotTools.editorPath.godot4": "e:\\Programm\\Godot4\\Godot_v4.4.1-stable_win64.exe",
+    "Codegeex.RepoIndex": true
 }

@@ -3,7 +3,7 @@
 	{
 	  "id": "tralalero",
 	  "attack": 3,
-	  "health": 20,
+	  "health": 60,
 	  "critical_attack": 5,
 	  "type": "боец",
 	  "super_ability": "Громовой крик"
@@ -11,7 +11,7 @@
 	{
 	  "id": "cappuccina",
 	  "attack": 2,
-	  "health": 15,
+	  "health": 50,
 	  "critical_attack": 4,
 	  "type": "дальний бой",
 	  "super_ability": "Танец теней"

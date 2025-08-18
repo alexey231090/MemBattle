@@ -1,0 +1,20 @@
+[gd_scene load_steps=4 format=3 uid="uid://b8j3l8k2f0m2h"]
+
+[ext_resource type="Texture2D" path="res://sprite/fist.png" id="1_fist_texture"]
+[ext_resource type="Script" path="res://scripts/FistSprite.gd" id="2_fist_script"]
+
+[sub_resource type="StandardMaterial3D" id="1_material"]
+albedo_texture = ExtResource("1_fist_texture")
+transparent = true
+billboard_mode = 1
+
+[node name="FistSprite" type="Sprite3D"]
+material_override = SubResource("1_material")
+texture = ExtResource("1_fist_texture")
+pixel_size = 0.01
+billboard = 1
+shaded = false
+double_sided = false
+transparent = true
+no_depth_test = true
+script = ExtResource("2_fist_script")

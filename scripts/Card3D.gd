@@ -281,6 +281,8 @@ func _physics_process(delta):
 		if current_cooldown <= 0:
 			# Дополнительная проверка перед атакой
 			if is_instance_valid(combat_target):
+				# Создаем спрайт кулака
+				create_fist_sprite()
 				# Атакуем противника
 				combat_target.take_damage(attack_damage)
 				current_cooldown = attack_cooldown
@@ -443,6 +445,34 @@ func find_nearest_free_position(target: Node, attacker_idx: int, total_attackers
 		)
 	
 	return best_position
+
+# Функция для создания спрайта кулака при атаке
+func create_fist_sprite():
+	# Проверяем, что цель существует и находится на достаточном расстоянии для атаки
+	if !combat_target or !is_instance_valid(combat_target):
+		return
+
+	# Проверяем расстояние до цели - создаем спрайт только если карты достаточно близко
+	var distance_to_target = global_position.distance_to(combat_target.global_position)
+	if distance_to_target > 2.5:  # Если цель слишком далеко, не создаем спрайт
+		return
+
+	# Загружаем сцену спрайта кулака
+	var fist_scene = preload("res://prefabs/FistSprite.tscn")
+	var fist_sprite = fist_scene.instantiate()
+
+	# Добавляем спрайт в сцену как дочерний элемент атакующего
+	add_child(fist_sprite)
+
+	# Устанавливаем начальную позицию (немного впереди атакующего)
+	var direction_to_target = (combat_target.global_position - global_position).normalized()
+
+	# Начальная позиция - немного впереди атакующего
+	fist_sprite.start_position = global_position + direction_to_target * 0.5
+	fist_sprite.global_position = fist_sprite.start_position
+
+	# Устанавливаем целевую позицию (немного перед целью)
+	fist_sprite.target_position = combat_target.global_position - direction_to_target * 0.5
 
 func move_to_enemy(enemy: Node, attacker_idx: int = 0, total_attackers_count: int = 1):
 	# Проверяем, что враг все еще существует
