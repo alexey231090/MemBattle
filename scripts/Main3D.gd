@@ -242,7 +242,7 @@ func raycast_from_mouse() -> Dictionary:
 	return {}
 
 # Функция для проверки новых целей при гибели карты
-func check_for_new_targets():
+func check_for_new_targets(dead_card = null):
 	if not is_battle_active:
 		return
 	

@@ -27,5 +27,15 @@ mesh = SubResource("CapsuleMesh_card")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
 shape = SubResource("CapsuleShape3D_card")
 
-[node name="HealthBar" type="Node3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0)
+[node name="HealthBar" type="Label3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.25397, 0)
+billboard = 1
+modulate = Color(0, 1, 0, 1)
+text = "████"
+outline_size = 0
+
+[node name="IDLabel" type="Label3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.5, 0)
+billboard = 1
+text = "MEME"
+outline_size = 4

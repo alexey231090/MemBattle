@@ -14,10 +14,6 @@ config/name="TralaleloCard"
 run/main_scene="res://scenes/Main3D.tscn"
 config/features=PackedStringArray("4.4", "GL Compatibility")
 
-[editor_plugins]
-
-enabled=PackedStringArray("res://addons/ai_assistant_hub/plugin.cfg")
-
 [plugins]
 
 ai_assistant_hub/llm_api="openrouter_api"

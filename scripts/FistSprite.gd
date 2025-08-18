@@ -3,7 +3,7 @@ extends Sprite3D
 var start_position: Vector3
 var target_position: Vector3
 var move_speed: float = 5.0
-var lifetime: float = 0.5
+var lifetime: float = 1
 
 func _ready():
 	# Уменьшаем размер спрайта

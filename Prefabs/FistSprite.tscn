@@ -5,7 +5,7 @@
 
 [sub_resource type="StandardMaterial3D" id="1_material"]
 albedo_texture = ExtResource("1_fist_texture")
-transparent = true
+transparency = 1
 billboard_mode = 1
 
 [node name="FistSprite" type="Sprite3D"]
@@ -15,6 +15,6 @@ pixel_size = 0.01
 billboard = 1
 shaded = false
 double_sided = false
-transparent = true
+transparency = 1
 no_depth_test = true
 script = ExtResource("2_fist_script")

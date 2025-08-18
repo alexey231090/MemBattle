@@ -203,8 +203,10 @@ func place_card(card: Node, pos: Vector3):
 	
 	if pos.distance_to(board_pos) < pos.distance_to(bench_pos):
 		board_cards[board_pos] = card
+		card.global_position = board_pos
 	else:
 		bench_cards[bench_pos] = card
+		card.global_position = bench_pos
 
 func remove_card(card: Node):
 	# Удаляем карту из обоих словарей
