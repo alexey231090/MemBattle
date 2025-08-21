@@ -1,0 +1,11 @@
+[gd_scene load_steps=3 format=3 uid="uid://dhhhcd0q3gajd"]
+
+[ext_resource type="Script" path="res://scripts/MagicPulse.gd" id="1_2q3q"]
+
+[sub_resource type="SphereMesh" id="SphereMesh_lxu1j"]
+radius = 0.15
+height = 0.3
+
+[node name="MagicPulse" type="MeshInstance3D"]
+mesh = SubResource("SphereMesh_lxu1j")
+script = ExtResource("1_2q3q")

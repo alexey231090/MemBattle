@@ -138,17 +138,25 @@ func update_health_bar():
 		# Рассчитываем процент здоровья
 		var health_percent = max(0, current_health / max_health)
 
-		# Обновляем текст полоски здоровья в зависимости от процента здоровья
-		var full_blocks = int(4 * health_percent)  # Максимум 4 блока
+		# Увеличиваем количество блоков для более плавного отображения
+		var total_blocks = 10  # Увеличиваем количество блоков до 10
+		var full_blocks = int(total_blocks * health_percent)
 		var health_text = ""
+
+		# Заполняем полные блоки
 		for i in range(full_blocks):
 			health_text += "█"
+
+		# Добавляем пустые блоки для оставшейся части
+		for i in range(total_blocks - full_blocks):
+			health_text += "░"
+
 		health_label.text = health_text
 
 		# Убеждаемся, что режим billboarding включен
 		health_label.billboard = 1
 
-		# Меняем цвет в зависимости от количества здоровья
+		# Плавно меняем цвет в зависимости от количества здоровья
 		if health_percent > 0.6:
 			health_label.modulate = Color.GREEN
 		elif health_percent > 0.3:
@@ -283,26 +291,23 @@ func create_fist_sprite():
 	if !combat_target or !is_instance_valid(combat_target):
 		return
 
-	# Проверяем расстояние до цели - создаем спрайт только если карты достаточно близко
+	# Проверяем расстояние до цели
 	var distance_to_target = global_position.distance_to(combat_target.global_position)
-	if distance_to_target > combat_offset + 0.5:  # Если цель слишком далеко, не создаем спрайт
+	if distance_to_target > combat_offset + 0.5:  # Если цель слишком далеко
 		return
 
-	# Загружаем сцену спрайта кулака
-	var fist_scene = preload("res://Prefabs/FistSprite.tscn")
-	var fist_sprite = fist_scene.instantiate()
+	# Создаем импульс атаки
+	var attack_pulse_scene = preload("res://Prefabs/AttackPulse.tscn")
+	var attack_pulse = attack_pulse_scene.instantiate()
 
-	# Добавляем спрайт в сцену как дочерний элемент атакующего
-	add_child(fist_sprite)
+	# Добавляем импульс в сцену как дочерний элемент атакующего
+	add_child(attack_pulse)
 
-	# Устанавливаем начальную позицию (немного впереди атакующего)
-	var direction_to_target = (combat_target.global_position - global_position).normalized()
+	# Определяем начальную и конечную позиции
+	# Начальная позиция - от атакующего
+	var start_position = global_position + Vector3.UP * 0.5  # Центр атакующего
+	# Конечная позиция - на цели
+	var target_position = combat_target.global_position + Vector3.UP * 0.5  # Центр цели
 
-	# Начальная позиция - из центра капсулы атакующего
-	var center_position = global_position + Vector3.UP * 0.5  # Поднимаем позицию до центра капсулы
-	fist_sprite.start_position = center_position
-	fist_sprite.global_position = fist_sprite.start_position
-
-	# Устанавливаем целевую позицию - в центр капсулы цели
-	var target_center = combat_target.global_position + Vector3.UP * 0.5  # Центр цели
-	fist_sprite.target_position = target_center
+	# Устанавливаем позиции для импульса атаки
+	attack_pulse.set_positions(start_position, target_position)
