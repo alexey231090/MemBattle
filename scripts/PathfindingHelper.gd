@@ -5,16 +5,13 @@ static var target_positions: Dictionary = {}
 
 # Функция для поиска ближайшей свободной позиции по краю круга
 static func find_nearest_free_position(target: Node, attacker: Node, attacker_idx: int, total_attackers_count: int, circle_radius: float = 2.5, min_distance: float = 1.2) -> Vector3:
-	print("find_nearest_free_position called with circle_radius: ", circle_radius, " min_distance: ", min_distance)
 	if !is_instance_valid(target) or !is_instance_valid(attacker):
-		print("Target or attacker is not valid")
 		return attacker.global_position if is_instance_valid(attacker) else Vector3.ZERO
 
 	# Если только один атакующий, он идет прямо к цели
 	if total_attackers_count == 1:
 		var direction = (target.global_position - attacker.global_position).normalized()
 		var result = target.global_position - direction * circle_radius
-		print("Single attacker, calculated position: ", result, " distance to target: ", result.distance_to(target.global_position))
 		return result
 
 	# Находим направление от атакующего к цели
@@ -71,6 +68,7 @@ static func find_nearest_free_position(target: Node, attacker: Node, attacker_id
 			for i in range(total_attackers_count):
 				if i != attacker_idx and target_positions[target_id].has(i):
 					var other_offset = target_positions[target_id][i]
+					# Важно: используем текущую позицию цели, а не начальную
 					var other_position = target_pos + other_offset
 					var distance_to_other = test_position.distance_to(other_position)
 
@@ -85,7 +83,6 @@ static func find_nearest_free_position(target: Node, attacker: Node, attacker_id
 
 	# Если не нашли свободную позицию в секторе, используем равномерное распределение
 	if best_position == Vector3.ZERO:
-		print("No free position found in sector, using uniform distribution")
 		var angle_step_uniform = 2.0 * PI / total_attackers_count
 		var current_angle = start_angle + (attacker_idx * angle_step_uniform)
 		# Увеличиваем радиус если не можем найти место
@@ -95,9 +92,7 @@ static func find_nearest_free_position(target: Node, attacker: Node, attacker_id
 			target_pos.y,
 			target_pos.z + sin(current_angle) * adjusted_radius
 		)
-		print("Uniform distribution - attacker_idx: ", attacker_idx, " angle: ", current_angle, " adjusted_radius: ", adjusted_radius)
 
-	print("Final position: ", best_position, " distance to target: ", best_position.distance_to(target_pos))
 	return best_position
 
 # Функция для расчета позиции на окружности вокруг цели
@@ -105,15 +100,22 @@ static func calculate_circle_position(target: Node, attacker_idx: int, total_att
 	if !is_instance_valid(target):
 		return Vector3.ZERO
 
+	# Получаем текущую позицию цели
+	var target_pos: Vector3
+	if target.is_inside_tree():
+		target_pos = target.global_position
+	else:
+		target_pos = target.position
+
 	# Рассчитываем равномерное распределение атакующих по кругу
 	var angle_step = 2.0 * PI / total_attackers_count
 	var current_angle = attacker_idx * angle_step
 
 	# Рассчитываем позицию на окружности вокруг врага
 	var circle_pos = Vector3(
-		target.global_position.x + cos(current_angle) * circle_radius,
-		target.global_position.y,  # Сохраняем ту же высоту
-		target.global_position.z + sin(current_angle) * circle_radius
+		target_pos.x + cos(current_angle) * circle_radius,
+		target_pos.y,  # Сохраняем ту же высоту
+		target_pos.z + sin(current_angle) * circle_radius
 	)
 
 	return circle_pos

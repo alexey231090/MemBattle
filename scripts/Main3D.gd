@@ -138,6 +138,10 @@ func _input(event):
 				$Camera3D.rotate_y(0.1)
 			elif event.keycode == KEY_E:  # Поворот камерой вправо
 				$Camera3D.rotate_y(-0.1)
+			elif event.keycode == KEY_A:  # Перемещение камеры влево
+				$Camera3D.translate(Vector3(-1, 0, 0))
+			elif event.keycode == KEY_D:  # Перемещение камеры вправо
+				$Camera3D.translate(Vector3(1, 0, 0))
 			elif event.keycode == KEY_W:  # Приблизить
 				$Camera3D.translate(Vector3(0, 0, -1))
 			elif event.keycode == KEY_S:  # Отдалить
@@ -289,5 +293,18 @@ func check_for_new_targets(dead_card = null):
 	
 	# Ищем новые цели для карт без целей
 	battle_manager.find_new_targets_for_orphaned_cards(allies, enemies)
+
+# Функция процесса для регулярной проверки состояния боя
+func _process(delta):
+	# Регулярно проверяем наличие карт без целей
+	if is_battle_active:
+		# Проверяем каждые 0.5 секунд
+		if not has_meta("last_target_check_time"):
+			set_meta("last_target_check_time", 0.0)
+
+		var time_since_last_check = Time.get_ticks_msec() / 1000.0 - get_meta("last_target_check_time")
+		if time_since_last_check > 0.5:
+			check_for_new_targets()
+			set_meta("last_target_check_time", Time.get_ticks_msec() / 1000.0)
 
  

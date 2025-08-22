@@ -11,21 +11,29 @@ var _flight_time: float = 0.0
 var _total_flight_time: float
 var _hit_target: bool = false
 var _trail_particles: Array = []  # Массив для частиц хвоста
+var _is_enemy_attack: bool = false  # Флаг для определения типа атаки
+
+# Метод для установки типа атаки (союзник или враг)
+func set_attack_type(is_enemy: bool):
+	_is_enemy_attack = is_enemy
 
 func _ready():
-	print("=== Инициализация импульса атаки ===")
-
 	# Создаем материал с нашим шейдером для импульса атаки
 	var material = ShaderMaterial.new()
 	material.shader = preload("res://shaders/magic_pulse_shader.gdshader")
-	material.set_shader_parameter("color", Color(1.0, 0.5, 0.0, 0.9))  # Оранжевый цвет для атаки
+
+	# Устанавливаем цвет в зависимости от типа атаки
+	var attack_color = Color(1.0, 0.5, 0.0, 0.9)  # Оранжевый цвет для врагов по умолчанию
+	if not _is_enemy_attack:
+		attack_color = Color(0.2, 0.6, 1.0, 0.9)  # Голубой цвет для союзников
+
+	material.set_shader_parameter("color", attack_color)
 
 	# Создаем текстуру шума
 	var noise_tex = NoiseTexture2D.new()
 	noise_tex.noise = FastNoiseLite.new()
 	var noise_texture: NoiseTexture2D = noise_tex  # Создаем локальную переменную с явным указанием типа
 	material.set_shader_parameter("noise_texture", noise_texture)
-
 
 	material_override = material
 
@@ -50,8 +58,6 @@ func _ready():
 		look_at(_target_position, Vector3.UP)
 	else:
 		rotation_degrees = Vector3(90, 0, 0)
-
-	print("Импульс атаки инициализирован, время жизни: ", LIFETIME)
 
 func _process(delta):
 	# Проверяем, что узел все еще в дереве сцены
@@ -98,7 +104,9 @@ func _create_trail_particle():
 	# Настраиваем материал частицы
 	var particle_material = ShaderMaterial.new()
 	particle_material.shader = preload("res://shaders/magic_pulse_shader.gdshader")
-	particle_material.set_shader_parameter("color", Color(1.0, 0.5, 0.0, 0.8))  # Оранжевый цвет
+	particle_material.set_shader_parameter("color", Color(1.0, 0.5, 0.0, 0.8))  # Оранжевый цвет для врагов по умолчанию
+	if not _is_enemy_attack:
+		particle_material.set_shader_parameter("color", Color(0.2, 0.6, 1.0, 0.8))  # Голубой цвет для союзников
 	particle.material_override = particle_material
 
 
@@ -158,7 +166,6 @@ func _update_trail_particles(delta):
 
 
 func _on_hit_target():
-	print("Импульс атаки достиг цели!")
 	visible = false
 
 	# Проверяем состояние ноды
@@ -175,7 +182,9 @@ func _on_hit_target():
 	# Настраиваем материал вспышки
 	var flash_material = ShaderMaterial.new()
 	flash_material.shader = preload("res://shaders/magic_pulse_shader.gdshader")
-	flash_material.set_shader_parameter("color", Color(1.0, 0.5, 0.0, 1.0))  # Оранжевый цвет
+	flash_material.set_shader_parameter("color", Color(1.0, 0.5, 0.0, 1.0))  # Оранжевый цвет для врагов по умолчанию
+	if not _is_enemy_attack:
+		flash_material.set_shader_parameter("color", Color(0.2, 0.6, 1.0, 1.0))  # Голубой цвет для союзников
 	flash.material_override = flash_material
 
 
@@ -190,7 +199,9 @@ func _on_hit_target():
 	tween.parallel().tween_property(flash, "scale", Vector3.ONE * 5.0, 0.2)
 
 	# Создаем временный цвет для анимации прозрачности
-	var flash_color = Color(1.0, 0.5, 0.0, 1.0)
+	var flash_color = Color(1.0, 0.5, 0.0, 1.0)  # Оранжевый цвет для врагов по умолчанию
+	if not _is_enemy_attack:
+		flash_color = Color(0.2, 0.6, 1.0, 1.0)  # Голубой цвет для союзников
 	tween.parallel().tween_method(func(alpha): 
 		flash_color.a = alpha
 		flash.material_override.set_shader_parameter("color", flash_color)
@@ -209,4 +220,4 @@ func _clear_trail_particles():
 func set_positions(start: Vector3, target: Vector3):
 	_start_position = start
 	_target_position = target
-	print("Установлены позиции: начальная=", start, ", целевая=", target)
+	
